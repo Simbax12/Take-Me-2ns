@@ -4,16 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -37,12 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.twonorth.takeme.data.Medication
 import com.twonorth.takeme.ui.theme.TakeMeTheme
 import com.twonorth.takeme.ui.today.MedicationStatus
 import com.twonorth.takeme.ui.today.TodayViewModel
@@ -63,6 +68,7 @@ class MainActivity : ComponentActivity() {
 fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayViewModel.Factory)) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var medicationToDelete by remember { mutableStateOf<Medication?>(null) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -79,6 +85,7 @@ fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayVi
         TodayScreen(
             statusList = uiState.medications,
             onToggleTaken = { viewModel.toggleTaken(it) },
+            onDeleteRequest = { medicationToDelete = it },
             modifier = Modifier.padding(innerPadding)
         )
 
@@ -91,6 +98,17 @@ fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayVi
                 }
             )
         }
+
+        medicationToDelete?.let { med ->
+            DeleteMedicationDialog(
+                medicationName = med.name,
+                onDismiss = { medicationToDelete = null },
+                onConfirm = {
+                    viewModel.deleteMedication(med)
+                    medicationToDelete = null
+                }
+            )
+        }
     }
 }
 
@@ -98,6 +116,7 @@ fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayVi
 fun TodayScreen(
     statusList: List<MedicationStatus>,
     onToggleTaken: (MedicationStatus) -> Unit,
+    onDeleteRequest: (Medication) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -109,10 +128,28 @@ fun TodayScreen(
             text = stringResource(id = R.string.today_heading),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
-        if (statusList.isEmpty()) {
+        if (statusList.isNotEmpty()) {
+            val takenCount = statusList.count { it.isTakenToday }
+            Text(
+                text = stringResource(R.string.today_progress, takenCount, statusList.size),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            LazyColumn {
+                items(statusList, key = { it.medication.id }) { status ->
+                    MedicationItem(
+                        status = status,
+                        onToggleTaken = onToggleTaken,
+                        onLongClick = { onDeleteRequest(status.medication) }
+                    )
+                }
+            }
+        } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.empty_today),
@@ -122,24 +159,27 @@ fun TodayScreen(
                     modifier = Modifier.padding(32.dp)
                 )
             }
-        } else {
-            LazyColumn {
-                items(statusList) { status ->
-                    MedicationItem(status = status, onToggleTaken = onToggleTaken)
-                }
-            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MedicationItem(status: MedicationStatus, onToggleTaken: (MedicationStatus) -> Unit) {
+fun MedicationItem(
+    status: MedicationStatus,
+    onToggleTaken: (MedicationStatus) -> Unit,
+    onLongClick: () -> Unit
+) {
     val isTaken = status.isTakenToday
     
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .combinedClickable(
+                onClick = { /* No-op, use button for primary action or handle later */ },
+                onLongClick = onLongClick
+            ),
         colors = if (isTaken) {
             CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         } else {
@@ -152,7 +192,19 @@ fun MedicationItem(status: MedicationStatus, onToggleTaken: (MedicationStatus) -
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // Color dot
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(getMedicationColor(status.medication.color))
+            )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+            ) {
                 Text(
                     text = status.medication.name,
                     style = MaterialTheme.typography.bodyLarge,
@@ -172,6 +224,17 @@ fun MedicationItem(status: MedicationStatus, onToggleTaken: (MedicationStatus) -
                 )
             }
         }
+    }
+}
+
+@Composable
+fun getMedicationColor(colorLabel: String): Color {
+    return when (colorLabel.lowercase()) {
+        "amber" -> MaterialTheme.colorScheme.primary
+        "blue" -> Color(0xFF4A90E2)
+        "green" -> Color(0xFF7ED321)
+        "red" -> Color(0xFFD0021B)
+        else -> MaterialTheme.colorScheme.primary
     }
 }
 
@@ -197,6 +260,34 @@ fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 enabled = name.isNotBlank()
             ) {
                 Text(stringResource(R.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteMedicationDialog(
+    medicationName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_delete_title)) },
+        text = {
+            Text(stringResource(R.string.dialog_delete_message, medicationName))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.action_delete),
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         },
         dismissButton = {

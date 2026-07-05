@@ -12,4 +12,8 @@
     <string name="action_mark_taken">Mark as taken</string>
     <string name="action_taken">Taken</string>
     <string name="empty_today">No medications scheduled for today. Add one to get started!</string>
+    <string name="today_progress">%1$d of %2$d taken</string>
+    <string name="dialog_delete_title">Delete Medication</string>
+    <string name="dialog_delete_message">Are you sure you want to delete %1$s? This will also remove all its history.</string>
+    <string name="action_delete">Delete</string>
 </resources>
