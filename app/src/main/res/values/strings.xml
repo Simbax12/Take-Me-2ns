@@ -4,4 +4,12 @@
     <string name="med_levothyroxine">Levothyroxine</string>
     <string name="med_sertraline">Sertraline</string>
     <string name="med_metformin">Metformin</string>
+    <string name="action_add">Add medication</string>
+    <string name="dialog_add_title">New Medication</string>
+    <string name="dialog_add_hint">Medication name</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_mark_taken">Mark as taken</string>
+    <string name="action_taken">Taken</string>
+    <string name="empty_today">No medications scheduled for today. Add one to get started!</string>
 </resources>
