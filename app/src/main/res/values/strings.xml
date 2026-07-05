@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">Take Me0</string>
+    <string name="app_name">Take Me</string>
+    <string name="today_heading">Today</string>
+    <string name="med_levothyroxine">Levothyroxine</string>
+    <string name="med_sertraline">Sertraline</string>
+    <string name="med_metformin">Metformin</string>
 </resources>

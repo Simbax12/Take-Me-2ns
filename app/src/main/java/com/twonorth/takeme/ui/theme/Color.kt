@@ -2,10 +2,10 @@ package com.twonorth.takeme.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val AmberPrimary = Color(0xFFE0A458)
+val AmberSecondary = Color(0xFF765A32)
+val AmberTertiary = Color(0xFF4C663D)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val AmberPrimaryDark = Color(0xFFFFB95D)
+val AmberSecondaryDark = Color(0xFFE6C08D)
+val AmberTertiaryDark = Color(0xFFB3CFA5)
