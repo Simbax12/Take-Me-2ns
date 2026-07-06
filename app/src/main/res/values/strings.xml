@@ -30,4 +30,26 @@
         <item quantity="other">Best: %1$d days</item>
     </plurals>
     <string name="adherence_format">Adherence: %1$d%%</string>
+    <string name="action_continue">Continue</string>
+    <string name="onboarding_name_title">Which medication are you starting to track?</string>
+    <string name="onboarding_name_hint">Medication name</string>
+    <string name="onboarding_log_title">Have you taken %1$s just now?</string>
+    <string name="onboarding_action_taken">I\'ve taken it just now</string>
+    <string name="onboarding_action_later">I\'ll log it later</string>
+    <string name="onboarding_details_title">Add details?</string>
+    <string name="onboarding_details_message">You can add dosage, frequency, and more to help you stay on track.</string>
+    <string name="onboarding_action_details">Add details</string>
+    <string name="onboarding_action_not_now">Not now</string>
+    <string name="action_skip">Skip</string>
+    <string name="dialog_skip_title">What happened?</string>
+    <string name="dialog_skip_note_hint">Add a note (optional)</string>
+    <string name="reason_forgot">Forgot</string>
+    <string name="reason_side_effects">Side effects</string>
+    <string name="reason_ran_out">Ran out</string>
+    <string name="reason_felt_better">Felt better</string>
+    <string name="reason_other">Other</string>
+    <string name="skipped_format">Skipped — %1$s</string>
+    <string name="snackbar_skip_removed">Skip removed</string>
+    <string name="action_undo">UNDO</string>
+    <string name="content_description_undo_skip">Undo skip</string>
 </resources>

@@ -29,4 +29,13 @@ interface MedicationDao {
 
     @Query("DELETE FROM dose_logs WHERE medicationId = :medicationId AND date = :date")
     suspend fun deleteDoseLog(medicationId: Long, date: String)
+
+    @Query("SELECT * FROM skip_records WHERE date = :date")
+    fun getSkipsForDate(date: String): Flow<List<SkipRecord>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSkip(skipRecord: SkipRecord)
+
+    @Query("DELETE FROM skip_records WHERE medicationId = :medicationId AND date = :date")
+    suspend fun deleteSkip(medicationId: Long, date: String)
 }

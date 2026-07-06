@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.twonorth.takeme.TakeMeApplication
 import com.twonorth.takeme.data.Medication
 import com.twonorth.takeme.data.MedicationRepository
+import com.twonorth.takeme.data.SkipRecord
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -17,7 +18,9 @@ import java.time.format.DateTimeFormatter
 
 data class MedicationStatus(
     val medication: Medication,
-    val isTakenToday: Boolean
+    val isTakenToday: Boolean,
+    val isSkippedToday: Boolean,
+    val skipRecord: SkipRecord? = null
 )
 
 data class TodayUiState(
@@ -28,14 +31,23 @@ data class TodayUiState(
 class TodayViewModel(private val repository: MedicationRepository) : ViewModel() {
 
     private val todayDateString = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+    private var lastRemovedSkip: SkipRecord? = null
 
     val uiState: StateFlow<TodayUiState> = combine(
         repository.allMedications,
-        repository.getDoseLogsForDate(todayDateString)
-    ) { medications, doseLogs ->
+        repository.getDoseLogsForDate(todayDateString),
+        repository.getSkipsForDate(todayDateString)
+    ) { medications, doseLogs, skips ->
         val takenIds = doseLogs.map { it.medicationId }.toSet()
+        val skipMap = skips.associateBy { it.medicationId }
+        
         val statusList = medications.map { med ->
-            MedicationStatus(medication = med, isTakenToday = takenIds.contains(med.id))
+            MedicationStatus(
+                medication = med,
+                isTakenToday = takenIds.contains(med.id),
+                isSkippedToday = skipMap.containsKey(med.id),
+                skipRecord = skipMap[med.id]
+            )
         }
         TodayUiState(medications = statusList, isLoading = false)
     }.stateIn(
@@ -50,6 +62,28 @@ class TodayViewModel(private val repository: MedicationRepository) : ViewModel()
                 repository.unmarkAsTaken(status.medication.id, todayDateString)
             } else {
                 repository.markAsTaken(status.medication.id, todayDateString)
+            }
+        }
+    }
+
+    fun skipDose(status: MedicationStatus, reason: String, note: String?) {
+        viewModelScope.launch {
+            repository.skipDose(status.medication.id, todayDateString, reason, note)
+        }
+    }
+
+    fun unskipDose(status: MedicationStatus) {
+        viewModelScope.launch {
+            lastRemovedSkip = status.skipRecord
+            repository.unskipDose(status.medication.id, todayDateString)
+        }
+    }
+
+    fun restoreLastSkip() {
+        viewModelScope.launch {
+            lastRemovedSkip?.let { skip ->
+                repository.skipDose(skip.medicationId, skip.date, skip.reason, skip.note)
+                lastRemovedSkip = null
             }
         }
     }
