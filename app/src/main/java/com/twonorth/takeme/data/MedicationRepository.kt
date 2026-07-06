@@ -8,6 +8,9 @@ class MedicationRepository(private val medicationDao: MedicationDao) {
     fun getDoseLogsForDate(date: String): Flow<List<DoseLog>> = 
         medicationDao.getDoseLogsForDate(date)
 
+    fun getDoseLogsForMedication(medicationId: Long): Flow<List<DoseLog>> =
+        medicationDao.getDoseLogsForMedication(medicationId)
+
     suspend fun insertMedication(medication: Medication) = 
         medicationDao.insertMedication(medication)
 

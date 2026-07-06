@@ -21,6 +21,9 @@ interface MedicationDao {
     @Query("SELECT * FROM dose_logs WHERE date = :date")
     fun getDoseLogsForDate(date: String): Flow<List<DoseLog>>
 
+    @Query("SELECT * FROM dose_logs WHERE medicationId = :medicationId ORDER BY date DESC")
+    fun getDoseLogsForMedication(medicationId: Long): Flow<List<DoseLog>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDoseLog(doseLog: DoseLog)
 
