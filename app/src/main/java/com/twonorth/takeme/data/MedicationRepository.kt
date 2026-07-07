@@ -39,4 +39,8 @@ class MedicationRepository(private val medicationDao: MedicationDao) {
     suspend fun unskipDose(medicationId: Long, date: String) {
         medicationDao.deleteSkip(medicationId, date)
     }
+
+    suspend fun clearAllData() {
+        medicationDao.deleteAllMedications()
+    }
 }

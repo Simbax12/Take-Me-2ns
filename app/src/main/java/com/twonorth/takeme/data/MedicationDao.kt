@@ -38,4 +38,7 @@ interface MedicationDao {
 
     @Query("DELETE FROM skip_records WHERE medicationId = :medicationId AND date = :date")
     suspend fun deleteSkip(medicationId: Long, date: String)
+
+    @Query("DELETE FROM medications")
+    suspend fun deleteAllMedications()
 }

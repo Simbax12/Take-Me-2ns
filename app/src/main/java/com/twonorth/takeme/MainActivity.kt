@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -69,8 +71,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.twonorth.takeme.data.Medication
+import com.twonorth.takeme.data.local.AppTheme
 import com.twonorth.takeme.ui.insights.InsightsScreen
 import com.twonorth.takeme.ui.onboarding.OnboardingScreen
+import com.twonorth.takeme.ui.settings.SettingsScreen
 import com.twonorth.takeme.ui.theme.TakeMeTheme
 import com.twonorth.takeme.ui.today.MedicationStatus
 import com.twonorth.takeme.ui.today.TodayViewModel
@@ -79,6 +83,7 @@ import kotlinx.coroutines.flow.first
 sealed class Screen(val route: String, val resourceId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Today : Screen("today", R.string.nav_today, Icons.Default.DateRange)
     object Insights : Screen("insights", R.string.nav_insights, Icons.Default.Info)
+    object Settings : Screen("settings", R.string.nav_settings, Icons.Default.Settings)
     object Onboarding : Screen("onboarding", 0, Icons.Default.Add)
 }
 
@@ -90,7 +95,14 @@ class MainActivity : ComponentActivity() {
         val app = application as TakeMeApplication
         
         setContent {
-            TakeMeTheme {
+            val appTheme by app.userPreferences.appTheme.collectAsState(initial = AppTheme.SYSTEM)
+            val darkTheme = when (appTheme) {
+                AppTheme.SYSTEM -> isSystemInDarkTheme()
+                AppTheme.LIGHT -> false
+                AppTheme.DARK -> true
+            }
+
+            TakeMeTheme(darkTheme = darkTheme) {
                 var startDestination by remember { mutableStateOf<String?>(null) }
                 
                 LaunchedEffect(Unit) {
@@ -115,7 +127,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainNavigation(startDestination: String) {
     val navController = rememberNavController()
-    val items = listOf(Screen.Today, Screen.Insights)
+    val items = listOf(Screen.Today, Screen.Insights, Screen.Settings)
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -158,6 +170,15 @@ fun MainNavigation(startDestination: String) {
             }
             composable(Screen.Today.route) { TodayScreenContainer() }
             composable(Screen.Insights.route) { InsightsScreen() }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onDataCleared = {
+                        navController.navigate(Screen.Onboarding.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -358,6 +379,20 @@ fun MedicationItem(
                         text = stringResource(R.string.skipped_format, reasonLabel),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (isSkipped) {
+                IconButton(
+                    onClick = onUnskipRequest,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.content_description_undo_skip),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
