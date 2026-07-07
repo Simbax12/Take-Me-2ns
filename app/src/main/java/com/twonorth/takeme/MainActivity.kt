@@ -1,9 +1,14 @@
 package com.twonorth.takeme
 
+import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +33,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -41,6 +48,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHost
@@ -54,14 +62,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -72,6 +81,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.twonorth.takeme.data.Medication
 import com.twonorth.takeme.data.local.AppTheme
+import com.twonorth.takeme.ui.components.MedicationNameTextField
 import com.twonorth.takeme.ui.insights.InsightsScreen
 import com.twonorth.takeme.ui.onboarding.OnboardingScreen
 import com.twonorth.takeme.ui.settings.SettingsScreen
@@ -79,6 +89,8 @@ import com.twonorth.takeme.ui.theme.TakeMeTheme
 import com.twonorth.takeme.ui.today.MedicationStatus
 import com.twonorth.takeme.ui.today.TodayViewModel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 sealed class Screen(val route: String, val resourceId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Today : Screen("today", R.string.nav_today, Icons.Default.DateRange)
@@ -194,6 +206,17 @@ fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayVi
     val scope = rememberCoroutineScope()
     val skipRemovedMsg = stringResource(R.string.snackbar_skip_removed)
     val undoLabel = stringResource(R.string.action_undo)
+    val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            scope.launch {
+                snackbarHostState.showSnackbar(context.getString(R.string.permission_rationale))
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -231,8 +254,13 @@ fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayVi
         if (showAddDialog) {
             AddMedicationDialog(
                 onDismiss = { showAddDialog = false },
-                onConfirm = { name ->
-                    viewModel.addMedication(name)
+                onConfirm = { name, reminderTime ->
+                    if (reminderTime != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                    viewModel.addMedication(name, reminderTime)
                     showAddDialog = false
                 }
             )
@@ -380,6 +408,14 @@ fun MedicationItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                } else {
+                    status.medication.reminderTime?.let { time ->
+                        Text(
+                            text = stringResource(R.string.reminder_format, time),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -432,24 +468,76 @@ fun getMedicationColor(colorLabel: String): Color {
 }
 
 @Composable
-fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String, String?) -> Unit) {
     var name by remember { mutableStateOf("") }
+    var reminderEnabled by remember { mutableStateOf(false) }
+    var reminderTime by remember { mutableStateOf("08:00") }
+    
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    
+    val timePickerDialog = TimePickerDialog(
+        context,
+        { _, hourOfDay, minute ->
+            reminderTime = String.format("%02d:%02d", hourOfDay, minute)
+        },
+        calendar.get(Calendar.HOUR_OF_DAY),
+        calendar.get(Calendar.MINUTE),
+        true
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_add_title)) },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.dialog_add_hint)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(modifier = Modifier.imePadding()) {
+                MedicationNameTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = stringResource(R.string.dialog_add_hint)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = if (reminderEnabled) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
+                        Text(
+                            text = stringResource(R.string.label_reminder),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                    Switch(
+                        checked = reminderEnabled,
+                        onCheckedChange = { reminderEnabled = it }
+                    )
+                }
+                
+                if (reminderEnabled) {
+                    TextButton(
+                        onClick = { timePickerDialog.show() },
+                        modifier = Modifier.padding(start = 32.dp)
+                    ) {
+                        Text(text = stringResource(R.string.reminder_format, reminderTime))
+                    }
+                }
+            }
         },
         confirmButton = {
             Button(
-                onClick = { if (name.isNotBlank()) onConfirm(name) },
+                onClick = { 
+                    if (name.isNotBlank()) {
+                        onConfirm(name, if (reminderEnabled) reminderTime else null)
+                    }
+                },
                 enabled = name.isNotBlank()
             ) {
                 Text(stringResource(R.string.action_save))

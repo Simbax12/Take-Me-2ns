@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -26,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.twonorth.takeme.R
+import com.twonorth.takeme.ui.components.MedicationNameTextField
 
 @Composable
 fun OnboardingScreen(
@@ -47,6 +51,8 @@ fun OnboardingScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -83,12 +89,10 @@ fun NameStep(
         textAlign = TextAlign.Center
     )
     Spacer(modifier = Modifier.height(24.dp))
-    OutlinedTextField(
+    MedicationNameTextField(
         value = name,
         onValueChange = onNameChange,
-        label = { Text(stringResource(R.string.onboarding_name_hint)) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth()
+        label = stringResource(R.string.onboarding_name_hint)
     )
     Spacer(modifier = Modifier.height(24.dp))
     Button(

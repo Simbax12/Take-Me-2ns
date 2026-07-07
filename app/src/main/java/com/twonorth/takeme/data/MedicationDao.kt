@@ -13,7 +13,7 @@ interface MedicationDao {
     fun getAllMedications(): Flow<List<Medication>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMedication(medication: Medication)
+    suspend fun insertMedication(medication: Medication): Long
 
     @Delete
     suspend fun deleteMedication(medication: Medication)

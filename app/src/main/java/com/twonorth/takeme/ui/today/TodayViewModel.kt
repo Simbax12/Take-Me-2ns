@@ -8,6 +8,7 @@ import com.twonorth.takeme.TakeMeApplication
 import com.twonorth.takeme.data.Medication
 import com.twonorth.takeme.data.MedicationRepository
 import com.twonorth.takeme.data.SkipRecord
+import com.twonorth.takeme.logic.notifications.NotificationHelper
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,7 +29,10 @@ data class TodayUiState(
     val isLoading: Boolean = true
 )
 
-class TodayViewModel(private val repository: MedicationRepository) : ViewModel() {
+class TodayViewModel(
+    private val repository: MedicationRepository,
+    private val notificationHelper: NotificationHelper
+) : ViewModel() {
 
     private val todayDateString = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
     private var lastRemovedSkip: SkipRecord? = null
@@ -88,15 +92,20 @@ class TodayViewModel(private val repository: MedicationRepository) : ViewModel()
         }
     }
 
-    fun addMedication(name: String) {
+    fun addMedication(name: String, reminderTime: String? = null) {
         viewModelScope.launch {
-            repository.insertMedication(Medication(name = name))
+            val med = Medication(name = name, reminderTime = reminderTime)
+            val id = repository.insertMedication(med)
+            if (reminderTime != null) {
+                notificationHelper.scheduleReminder(med.copy(id = id))
+            }
         }
     }
 
     fun deleteMedication(medication: Medication) {
         viewModelScope.launch {
             repository.deleteMedication(medication)
+            notificationHelper.cancelReminder(medication.id)
         }
     }
 
@@ -105,7 +114,7 @@ class TodayViewModel(private val repository: MedicationRepository) : ViewModel()
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as TakeMeApplication
-                return TodayViewModel(application.repository) as T
+                return TodayViewModel(application.repository, NotificationHelper(application)) as T
             }
         }
     }

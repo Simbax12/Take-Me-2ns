@@ -14,7 +14,7 @@ class MedicationRepository(private val medicationDao: MedicationDao) {
     fun getSkipsForDate(date: String): Flow<List<SkipRecord>> =
         medicationDao.getSkipsForDate(date)
 
-    suspend fun insertMedication(medication: Medication) = 
+    suspend fun insertMedication(medication: Medication): Long =
         medicationDao.insertMedication(medication)
 
     suspend fun deleteMedication(medication: Medication) = 
