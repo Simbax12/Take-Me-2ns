@@ -34,7 +34,9 @@ class NotificationHelper(private val context: Context) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
 
+        // Use a unique action to ensure the Intent is unique for AlarmManager
         val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ACTION_REMINDER_PREFIX + medication.id
             putExtra("MEDICATION_ID", medication.id)
             putExtra("MEDICATION_NAME", medication.name)
         }
@@ -49,13 +51,13 @@ class NotificationHelper(private val context: Context) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    val info = AlarmManager.AlarmClockInfo(
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
                         calendar.timeInMillis,
-                        getOpenAppPendingIntent()
+                        pendingIntent
                     )
-                    alarmManager.setAlarmClock(info, pendingIntent)
                 } else {
-                    // Fallback to inexact if for some reason we lost permission
+                    // Fallback to inexact
                     alarmManager.setAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         calendar.timeInMillis,
@@ -63,11 +65,11 @@ class NotificationHelper(private val context: Context) {
                     )
                 }
             } else {
-                val info = AlarmManager.AlarmClockInfo(
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
                     calendar.timeInMillis,
-                    getOpenAppPendingIntent()
+                    pendingIntent
                 )
-                alarmManager.setAlarmClock(info, pendingIntent)
             }
         } catch (e: SecurityException) {
             Log.e("NotificationHelper", "Failed to schedule exact alarm", e)
@@ -81,7 +83,9 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun cancelReminder(medicationId: Long) {
-        val intent = Intent(context, ReminderReceiver::class.java)
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ACTION_REMINDER_PREFIX + medicationId
+        }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             medicationId.toInt(),
@@ -93,19 +97,8 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    private fun getOpenAppPendingIntent(): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        return PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
     companion object {
         const val CHANNEL_ID = "medication_reminders"
+        private const val ACTION_REMINDER_PREFIX = "com.twonorth.takeme.ACTION_REMINDER_"
     }
 }

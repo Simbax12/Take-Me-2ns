@@ -41,4 +41,7 @@ interface MedicationDao {
 
     @Query("DELETE FROM medications")
     suspend fun deleteAllMedications()
+
+    @Query("SELECT * FROM medications")
+    suspend fun getAllMedicationsSync(): List<Medication>
 }

@@ -43,4 +43,7 @@ class MedicationRepository(private val medicationDao: MedicationDao) {
     suspend fun clearAllData() {
         medicationDao.deleteAllMedications()
     }
+
+    suspend fun getAllMedicationsSync(): List<Medication> = 
+        medicationDao.getAllMedicationsSync()
 }

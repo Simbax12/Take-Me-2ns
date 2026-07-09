@@ -11,7 +11,6 @@ import com.twonorth.takeme.R
 import com.twonorth.takeme.TakeMeApplication
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class ReminderReceiver : BroadcastReceiver() {
@@ -22,7 +21,9 @@ class ReminderReceiver : BroadcastReceiver() {
 
         if (medicationId != -1L) {
             showNotification(context, medicationId, medicationName)
-            rescheduleNext(context, medicationId)
+            
+            val pendingResult = goAsync()
+            rescheduleNext(context, medicationId, pendingResult)
         }
     }
 
@@ -40,7 +41,7 @@ class ReminderReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification) // We'll need to create this or use a default
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notification_title))
             .setContentText(context.getString(R.string.notification_message, medicationName))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -52,16 +53,21 @@ class ReminderReceiver : BroadcastReceiver() {
         notificationManager.notify(medicationId.toInt(), notification)
     }
 
-    private fun rescheduleNext(context: Context, medicationId: Long) {
+    private fun rescheduleNext(context: Context, medicationId: Long, pendingResult: PendingResult) {
         val app = context.applicationContext as TakeMeApplication
         val repository = app.repository
         val helper = NotificationHelper(context)
 
         // Reschedule in a background scope since we're in a BroadcastReceiver
         CoroutineScope(Dispatchers.IO).launch {
-            val med = repository.allMedications.first().find { it.id == medicationId }
-            if (med != null && med.reminderTime != null) {
-                helper.scheduleReminder(med)
+            try {
+                // Use sync query for reliability
+                val med = repository.getAllMedicationsSync().find { it.id == medicationId }
+                if (med != null && med.reminderTime != null) {
+                    helper.scheduleReminder(med)
+                }
+            } finally {
+                pendingResult.finish()
             }
         }
     }
