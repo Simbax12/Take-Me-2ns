@@ -79,24 +79,35 @@ fun InsightMedicationCard(item: MedicationWithStats, context: android.content.Co
             )
 
             if (item.stats.hasData) {
-                Text(
-                    text = context.resources.getQuantityString(
-                        R.plurals.streak_format,
-                        item.stats.currentStreak,
-                        item.stats.currentStreak
-                    ),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                if (item.stats.isPerWeek) {
+                    Text(
+                        text = stringResource(
+                            R.string.weekly_progress_format,
+                            item.stats.weeklyProgress ?: 0,
+                            item.stats.weeklyTarget ?: 0
+                        ),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                } else {
+                    Text(
+                        text = context.resources.getQuantityString(
+                            R.plurals.streak_format,
+                            item.stats.currentStreak,
+                            item.stats.currentStreak
+                        ),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
 
-                Text(
-                    text = context.resources.getQuantityString(
-                        R.plurals.best_streak_format,
-                        item.stats.bestStreak,
-                        item.stats.bestStreak
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    Text(
+                        text = context.resources.getQuantityString(
+                            R.plurals.best_streak_format,
+                            item.stats.bestStreak,
+                            item.stats.bestStreak
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Text(
                     text = stringResource(R.string.adherence_format, item.stats.adherenceRate),

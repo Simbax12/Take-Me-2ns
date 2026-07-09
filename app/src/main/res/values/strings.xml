@@ -30,6 +30,7 @@
         <item quantity="other">Best: %1$d days</item>
     </plurals>
     <string name="adherence_format">Adherence: %1$d%%</string>
+    <string name="weekly_progress_format">This week: %1$d of %2$d</string>
     <string name="action_continue">Continue</string>
     <string name="onboarding_name_title">Which medication are you starting to track?</string>
     <string name="onboarding_name_hint">Medication name</string>
