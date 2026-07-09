@@ -81,6 +81,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.twonorth.takeme.data.Medication
 import com.twonorth.takeme.data.local.AppTheme
+import com.twonorth.takeme.logic.FrequencyLogic
 import com.twonorth.takeme.ui.components.MedicationNameTextField
 import com.twonorth.takeme.ui.insights.InsightsScreen
 import com.twonorth.takeme.ui.onboarding.OnboardingScreen
@@ -254,13 +255,13 @@ fun TodayScreenContainer(viewModel: TodayViewModel = viewModel(factory = TodayVi
         if (showAddDialog) {
             AddMedicationDialog(
                 onDismiss = { showAddDialog = false },
-                onConfirm = { name, reminderTime ->
+                onConfirm = { name, reminderTime, frequency, frequencyDays, frequencyTarget ->
                     if (reminderTime != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                             permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                         }
                     }
-                    viewModel.addMedication(name, reminderTime)
+                    viewModel.addMedication(name, reminderTime, frequency, frequencyDays, frequencyTarget)
                     showAddDialog = false
                 }
             )
@@ -395,6 +396,21 @@ fun MedicationItem(
                     fontWeight = FontWeight.Medium,
                     color = if (isSkipped) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val context = LocalContext.current
+                    Text(
+                        text = FrequencyLogic.getFrequencyLabel(context, status.medication),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    status.medication.reminderTime?.let { time ->
+                        Text(
+                            text = " • " + stringResource(R.string.reminder_format, time),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 if (isSkipped) {
                     val reasonLabel = when(status.skipRecord?.reason) {
                         "forgot" -> stringResource(R.string.reason_forgot)
@@ -408,14 +424,6 @@ fun MedicationItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else {
-                    status.medication.reminderTime?.let { time ->
-                        Text(
-                            text = stringResource(R.string.reminder_format, time),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
 
@@ -468,10 +476,14 @@ fun getMedicationColor(colorLabel: String): Color {
 }
 
 @Composable
-fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String, String?) -> Unit) {
+fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String, String?, String, String?, Int?) -> Unit) {
     var name by remember { mutableStateOf("") }
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf("08:00") }
+    
+    var frequency by remember { mutableStateOf("daily") }
+    var selectedDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
+    var targetPerWeek by remember { mutableStateOf(3) }
     
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -496,6 +508,89 @@ fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String, String?) -> U
                     onValueChange = { name = it },
                     label = stringResource(R.string.dialog_add_hint)
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = stringResource(R.string.label_frequency),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    listOf(
+                        "daily" to R.string.freq_daily,
+                        "specific_days" to R.string.freq_specific_days,
+                        "per_week" to R.string.freq_per_week
+                    ).forEach { (type, labelRes) ->
+                        val selected = frequency == type
+                        androidx.compose.material3.FilterChip(
+                            selected = selected,
+                            onClick = { frequency = type },
+                            label = { Text(stringResource(labelRes)) }
+                        )
+                    }
+                }
+                
+                when (frequency) {
+                    "specific_days" -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val days = listOf(
+                                1 to R.string.day_mon_letter,
+                                2 to R.string.day_tue_letter,
+                                3 to R.string.day_wed_letter,
+                                4 to R.string.day_thu_letter,
+                                5 to R.string.day_fri_letter,
+                                6 to R.string.day_sat_letter,
+                                7 to R.string.day_sun_letter
+                            )
+                            days.forEach { (day, letterRes) ->
+                                val isSelected = selectedDays.contains(day)
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                                        .combinedClickable(onClick = {
+                                            selectedDays = if (isSelected) selectedDays - day else selectedDays + day
+                                        }),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(letterRes),
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    "per_week" -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            IconButton(onClick = { if (targetPerWeek > 1) targetPerWeek-- }) {
+                                Text("-", style = MaterialTheme.typography.headlineMedium)
+                            }
+                            Text(
+                                text = stringResource(R.string.freq_per_week_format, targetPerWeek),
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            IconButton(onClick = { if (targetPerWeek < 7) targetPerWeek++ }) {
+                                Text("+", style = MaterialTheme.typography.headlineMedium)
+                            }
+                        }
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -535,10 +630,12 @@ fun AddMedicationDialog(onDismiss: () -> Unit, onConfirm: (String, String?) -> U
             Button(
                 onClick = { 
                     if (name.isNotBlank()) {
-                        onConfirm(name, if (reminderEnabled) reminderTime else null)
+                        val freqDays = if (frequency == "specific_days") selectedDays.sorted().joinToString(",") else null
+                        val freqTarget = if (frequency == "per_week") targetPerWeek else null
+                        onConfirm(name, if (reminderEnabled) reminderTime else null, frequency, freqDays, freqTarget)
                     }
                 },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && (frequency != "specific_days" || selectedDays.isNotEmpty())
             ) {
                 Text(stringResource(R.string.action_save))
             }

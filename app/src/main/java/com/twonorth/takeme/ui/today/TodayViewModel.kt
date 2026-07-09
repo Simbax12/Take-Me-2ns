@@ -8,6 +8,7 @@ import com.twonorth.takeme.TakeMeApplication
 import com.twonorth.takeme.data.Medication
 import com.twonorth.takeme.data.MedicationRepository
 import com.twonorth.takeme.data.SkipRecord
+import com.twonorth.takeme.logic.FrequencyLogic
 import com.twonorth.takeme.logic.notifications.NotificationHelper
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,10 +43,13 @@ class TodayViewModel(
         repository.getDoseLogsForDate(todayDateString),
         repository.getSkipsForDate(todayDateString)
     ) { medications, doseLogs, skips ->
+        val today = LocalDate.now()
+        val scheduledMeds = medications.filter { FrequencyLogic.isScheduled(it, today) }
+        
         val takenIds = doseLogs.map { it.medicationId }.toSet()
         val skipMap = skips.associateBy { it.medicationId }
         
-        val statusList = medications.map { med ->
+        val statusList = scheduledMeds.map { med ->
             MedicationStatus(
                 medication = med,
                 isTakenToday = takenIds.contains(med.id),
@@ -92,9 +96,21 @@ class TodayViewModel(
         }
     }
 
-    fun addMedication(name: String, reminderTime: String? = null) {
+    fun addMedication(
+        name: String,
+        reminderTime: String? = null,
+        frequency: String = "daily",
+        frequencyDays: String? = null,
+        frequencyTarget: Int? = null
+    ) {
         viewModelScope.launch {
-            val med = Medication(name = name, reminderTime = reminderTime)
+            val med = Medication(
+                name = name,
+                reminderTime = reminderTime,
+                frequency = frequency,
+                frequencyDays = frequencyDays,
+                frequencyTarget = frequencyTarget
+            )
             val id = repository.insertMedication(med)
             if (reminderTime != null) {
                 notificationHelper.scheduleReminder(med.copy(id = id))

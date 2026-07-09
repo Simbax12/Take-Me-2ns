@@ -11,6 +11,8 @@ data class Medication(
     val notes: String = "",
     val color: String = "amber",
     val frequency: String = "daily",
+    val frequencyDays: String? = null, // "1,2,3" for Mon,Tue,Wed (1=Mon, 7=Sun)
+    val frequencyTarget: Int? = null, // for "per_week"
     val reminderTime: String? = null,
     val timesPerDay: Int = 1,
     val position: Int = 0,

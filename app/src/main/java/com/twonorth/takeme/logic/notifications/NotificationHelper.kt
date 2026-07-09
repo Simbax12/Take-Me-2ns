@@ -8,6 +8,9 @@ import android.os.Build
 import android.util.Log
 import com.twonorth.takeme.MainActivity
 import com.twonorth.takeme.data.Medication
+import com.twonorth.takeme.logic.FrequencyLogic
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Calendar
 
 class NotificationHelper(private val context: Context) {
@@ -22,17 +25,33 @@ class NotificationHelper(private val context: Context) {
         val hour = parts[0].toIntOrNull() ?: return
         val minute = parts[1].toIntOrNull() ?: return
 
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+        // Find the next scheduled day starting from today
+        var scheduledDate = LocalDate.now()
+        val calendar = Calendar.getInstance()
+        
+        // If time has already passed today, start checking from tomorrow
+        calendar.set(Calendar.HOUR_OF_DAY, hour)
+        calendar.set(Calendar.MINUTE, minute)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        
+        if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            scheduledDate = scheduledDate.plusDays(1)
         }
 
-        // If time has already passed today, schedule for tomorrow
-        if (calendar.timeInMillis <= System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        // Loop until we find a day where it is scheduled
+        var daysChecked = 0
+        while (!FrequencyLogic.isScheduled(medication, scheduledDate) && daysChecked < 7) {
+            scheduledDate = scheduledDate.plusDays(1)
+            daysChecked++
         }
+
+        // Finalize the calendar to the found date
+        val zone = ZoneId.systemDefault()
+        val epochMillis = scheduledDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        calendar.timeInMillis = epochMillis
+        calendar.set(Calendar.HOUR_OF_DAY, hour)
+        calendar.set(Calendar.MINUTE, minute)
 
         // Use a unique action to ensure the Intent is unique for AlarmManager
         val intent = Intent(context, ReminderReceiver::class.java).apply {

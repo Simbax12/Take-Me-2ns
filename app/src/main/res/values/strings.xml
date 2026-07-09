@@ -70,4 +70,24 @@
     <string name="label_no_reminder">No reminder set</string>
     <string name="reminder_format">Daily at %1$s</string>
     <string name="permission_rationale">To help you stay on track, Take Me needs permission to send reminders.</string>
+    <string name="freq_daily">Every day</string>
+    <string name="freq_specific_days">Specific days</string>
+    <string name="freq_per_week">Per week</string>
+    <string name="freq_no_days">No days selected</string>
+    <string name="freq_per_week_format">%1$d× per week</string>
+    <string name="day_mon_short">Mon</string>
+    <string name="day_tue_short">Tue</string>
+    <string name="day_wed_short">Wed</string>
+    <string name="day_thu_short">Thu</string>
+    <string name="day_fri_short">Fri</string>
+    <string name="day_sat_short">Sat</string>
+    <string name="day_sun_short">Sun</string>
+    <string name="day_mon_letter">M</string>
+    <string name="day_tue_letter">T</string>
+    <string name="day_wed_letter">W</string>
+    <string name="day_thu_letter">T</string>
+    <string name="day_fri_letter">F</string>
+    <string name="day_sat_letter">S</string>
+    <string name="day_sun_letter">S</string>
+    <string name="label_frequency">Frequency</string>
 </resources>
